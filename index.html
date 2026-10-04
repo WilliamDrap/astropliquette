@@ -17,7 +17,8 @@ a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);
 a.card:hover,a.card:focus-visible{border-color:var(--sun);outline:none}
 .card h2{font-family:"Young Serif",Georgia,serif;font-weight:400;font-size:1.4rem;margin:.2em 0 .3em}
 .card p{margin:0;color:var(--muted)}
-.icon{font-size:2rem}
+.icon{font-size:2rem;height:3rem;display:flex;align-items:center}
+.icon svg{width:2.4rem;height:2.4rem}
 footer{margin-top:40px;color:var(--muted);font-size:.9rem}
 </style>
 </head>
@@ -37,12 +38,12 @@ footer{margin-top:40px;color:var(--muted);font-size:.9rem}
       <p>Incline l'orbite de la Lune, fais défiler l'année et découvre pourquoi il n'y a pas une éclipse à chaque nouvelle Lune.</p>
     </a>
     <a class="card" href="eclipse2026/">
-      <div class="icon" aria-hidden="true">🌘</div>
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 48 48"><defs><radialGradient id="halo"><stop offset="40%" stop-color="#ffd27a" stop-opacity=".9"/><stop offset="100%" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs><circle cx="24" cy="24" r="24" fill="#4a6fb5"/><circle cx="24" cy="24" r="20" fill="url(#halo)"/><circle cx="24" cy="24" r="11" fill="#fff1c4"/><circle cx="28" cy="21" r="11.3" fill="#1a1f33"/></svg></div>
       <h2>Éclipse du 12 août 2026</h2>
       <p>Suis le Soleil au coucher, en même temps à Arras où il sera éclipsé à 91 % et à Oviedo où l'éclipse sera totale.</p>
     </a>
     <a class="card" href="eclipse2027/">
-      <div class="icon" aria-hidden="true">🌑</div>
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 48 48"><defs><radialGradient id="couronne"><stop offset="45%" stop-color="#fff3d6"/><stop offset="100%" stop-color="#fff3d6" stop-opacity="0"/></radialGradient></defs><circle cx="24" cy="24" r="24" fill="#141933"/><circle cx="24" cy="24" r="22" fill="url(#couronne)"/><circle cx="24" cy="24" r="10.5" fill="#05070f"/></svg></div>
       <h2>Éclipse du 2 août 2027</h2>
       <p>Compare l'éclipse partielle vue d'Arras et la longue totalité vue de Louxor, en Égypte.</p>
     </a>
