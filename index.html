@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Astropliquette</title>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f7;--ink:#1c2340;--muted:#56607f;--panel:#fff;--line:#d3d9ea;--sun:#e8962a;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1328;--ink:#e6e8f2;--muted:#a0a8c8;--panel:#171d3a;--line:#2a3360;--sun:#f2a93b}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Lexend,system-ui,sans-serif;font-weight:300;line-height:1.55}
+.wrap{max-width:960px;margin:0 auto;padding:40px 20px}
+h1{font-family:"Young Serif",Georgia,serif;font-weight:400;font-size:clamp(2.2rem,6vw,3.6rem);margin:0 0 .3em}
+.lede{color:var(--muted);max-width:58ch;font-size:1.1rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;margin-top:32px}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px}
+a.card:hover,a.card:focus-visible{border-color:var(--sun);outline:none}
+.card h2{font-family:"Young Serif",Georgia,serif;font-weight:400;font-size:1.4rem;margin:.2em 0 .3em}
+.card p{margin:0;color:var(--muted)}
+.icon{font-size:2rem}
+footer{margin-top:40px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Astropliquette</h1>
+  <p class="lede">Des appliquettes interactives pour comprendre l'astronomie en la manipulant, conçues pour les ateliers des Groupes Scientifiques d'Arras et pour le grand public.</p>
+  <div class="grid">
+    <a class="card" href="phases-lune/">
+      <div class="icon" aria-hidden="true">🌓</div>
+      <h2>Les phases de la Lune</h2>
+      <p>Fais tourner la Lune autour de la Terre et découvre pourquoi nous ne voyons pas toujours la même part de sa moitié éclairée.</p>
+    </a>
+  </div>
+  <footer>William Drapeaud/GSA</footer>
+</div>
+</body>
+</html>
