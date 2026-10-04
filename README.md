@@ -12,6 +12,8 @@ Astropliquette rassemble des appliquettes interactives de vulgarisation en astro
 
 **[Éclipse du 2 août 2027](eclipse2027/)** compare l'éclipse partielle vue d'Arras, à 46 %, et la totalité vue de Louxor.
 
+**[Le menu cosmique](menu-cosmique/)** est une borne conçue pour la Fête de la science 2026, à utiliser sur une tablette à l'horizontale. On choisit un aliment et la borne range la masse de ses atomes selon l'astre qui les a fabriqués, du Big Bang aux étoiles.
+
 ## Consulter en ligne
 
 La galerie est publiée avec GitHub Pages à l'adresse [williamdrap.github.io/astropliquette](https://williamdrap.github.io/astropliquette/). Chaque appliquette se trouve dans son propre dossier.
