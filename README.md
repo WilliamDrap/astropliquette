@@ -6,9 +6,15 @@ Astropliquette rassemble des appliquettes interactives de vulgarisation en astro
 
 **[Les phases de la Lune](phases-lune/)** permet de faire tourner la Lune autour de la Terre et de voir en même temps ce que l'on observe depuis le sol. Un mode défi propose de retrouver six phases, des plus simples aux gibbeuses. L'objectif est de corriger l'idée reçue selon laquelle les phases viendraient de l'ombre de la Terre.
 
+**[Orbite lunaire et ligne des nœuds](ligne-des-noeuds/)** montre en 3D l'orbite de la Lune, inclinée sur l'écliptique, et sa ligne des nœuds. En faisant défiler l'année, on voit que les éclipses ne sont possibles que lorsque cette ligne pointe vers le Soleil, pendant les saisons d'éclipses.
+
+**[Éclipse du 12 août 2026](eclipse2026/)** anime la hauteur du Soleil pendant l'éclipse du 12 août 2026, en parallèle à Arras, où le Soleil sera éclipsé à 91 %, et à Oviedo, où l'éclipse sera totale.
+
+**[Éclipse du 2 août 2027](eclipse2027/)** compare l'éclipse partielle vue d'Arras, à 46 %, et la totalité vue de Louxor, avec des positions calculées à partir de l'éphéméride JPL DE440.
+
 ## Consulter en ligne
 
-Le dépôt est prévu pour GitHub Pages. Une fois la publication activée dans les réglages du dépôt, la galerie est accessible à la racine du site et chaque appliquette dans son propre dossier.
+La galerie est publiée avec GitHub Pages à l'adresse [williamdrap.github.io/astropliquette](https://williamdrap.github.io/astropliquette/). Chaque appliquette se trouve dans son propre dossier.
 
 ## Crédits
 

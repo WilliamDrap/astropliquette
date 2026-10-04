@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Éclipse du 12 août 2026 — Arras · Oviedo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .stage { display: flex; flex: 1; min-height: 0; }
+  .panel {
+    flex: 1; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .panel-left { border-right: 1px solid #1e1e1e; }
+  canvas { display: block; }
+
+  .city-label {
+    position: absolute; top: 20px; left: 0; right: 0;
+    text-align: center; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase; color: #fff;
+    text-shadow: 0 0 8px #000, 0 0 18px #000;
+  }
+  .time-label {
+    position: absolute; bottom: 18px; left: 0; right: 0;
+    text-align: center; font-size: 24px; font-weight: 300;
+    letter-spacing: 0.12em; color: #fff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px #000, 0 0 22px #000;
+  }
+  .phase-label {
+    position: absolute; bottom: 56px; left: 0; right: 0;
+    text-align: center; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: #ffc830; text-shadow: 0 0 10px #000, 0 0 20px #000;
+    min-height: 14px;
+  }
+
+  .controls {
+    padding: 11px 22px 14px; display: flex; align-items: center; gap: 12px;
+    background: #0c0c0c; border-top: 1px solid #2a2a2a; flex-shrink: 0;
+  }
+  .time-bound {
+    font-size: 12px; color: #bbb; letter-spacing: 0.08em;
+    white-space: nowrap; min-width: 38px; font-variant-numeric: tabular-nums;
+  }
+  .time-bound.right { text-align: right; }
+  input[type=range] {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 3px; background: #383838; outline: none; border-radius: 2px; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; cursor: pointer;
+    box-shadow: 0 0 6px rgba(255,255,255,0.4);
+    transition: background 0.15s, transform 0.1s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { background: #ffc830; transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: none; cursor: pointer;
+  }
+  input[type=range]::-moz-range-track { height: 3px; background: #383838; border-radius: 2px; }
+  .play-btn {
+    background: #1c1c1c; border: 1px solid #555; color: #ddd;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 7px 20px; cursor: pointer; border-radius: 3px; white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .play-btn:hover { background: #2a2a2a; border-color: #999; color: #fff; }
+
+  /* ── Ajout : graphe hauteur du Soleil ── */
+  .altitude {
+    background: #0c0c0c; border-top: 1px solid #2a2a2a;
+    flex-shrink: 0; padding: 6px 0 4px;
+  }
+  #altCanvas { display: block; }
+  /* ── Ajout : copyright ── */
+  .copyright {
+    background: #0c0c0c; border-top: 1px solid #1a1a1a;
+    text-align: center; color: #6e6e6e; font-size: 11px;
+    letter-spacing: 0.06em; padding: 9px 12px 11px; flex-shrink: 0;
+  }
+  .copyright b { color: #9a9a9a; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="panel panel-left" id="panelArras">
+    <div class="city-label">Arras — 91 %</div>
+    <canvas id="canvasArras"></canvas>
+    <div class="phase-label" id="phaseArras"></div>
+    <div class="time-label" id="timeArras">19:19</div>
+  </div>
+  <div class="panel" id="panelOviedo">
+    <div class="city-label">Oviedo — totalité</div>
+    <canvas id="canvasOviedo"></canvas>
+    <div class="phase-label" id="phaseOviedo"></div>
+    <div class="time-label" id="timeOviedo">19:19</div>
+  </div>
+</div>
+<div class="controls">
+  <span class="time-bound">19:19</span>
+  <input type="range" id="slider" min="0" max="128" value="0" step="0.02">
+  <span class="time-bound right">21:27</span>
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">&#9654; Lancer</button>
+</div>
+
+<div class="altitude" id="altWrap">
+  <canvas id="altCanvas"></canvas>
+</div>
+
+<div class="copyright">
+  &copy; <b>Groupes Scientifiques d'Arras</b> &nbsp;&middot;&nbsp; Éclipse partielle de Soleil du 12 août 2026
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   TEMPS — tout en minutes décimales depuis T0 = 19h19m00s CEST
+   ═══════════════════════════════════════════════════════════════ */
+const T0_SEC = 19*3600 + 19*60; // 69540 s depuis minuit
+
+function toMin(h, m, sc) { return ((h*3600 + m*60 + sc) - T0_SEC) / 60; }
+
+/*
+  ARRAS — partielle 91 %
+  Source : circonstances exactes fournies (CEST = UTC+2)
+  C1 = 19h19m44s   MAX = 20h14m53s   C4 = 21h07m05s
+*/
+const A = {
+  C1:  toMin(19,19,44),   //   0.7333 min
+  MAX: toMin(20,14,53),   //  55.8833 min
+  C4:  toMin(21, 7, 5),   // 108.0833 min
+  maxObs: 0.91,
+  isTotal: false,
+  C2: null, C3: null
+};
+
+/*
+  OVIEDO — totale 1 min 48 s
+  Source : IGN espagnol / eclipse-solaire.fr (CEST)
+  C1 = 19h31m00s   C2 = 20h27m00s   MAX = 20h28m00s
+  C3 = 20h28m48s   C4 = 21h21m00s
+*/
+const O = {
+  C1:  toMin(19,31, 0),   //  12.0000 min
+  C2:  toMin(20,27, 0),   //  68.0000 min
+  MAX: toMin(20,28, 0),   //  69.0000 min
+  C3:  toMin(20,28,48),   //  69.8000 min
+  C4:  toMin(21,21, 0),   // 122.0000 min
+  maxObs: 1.0,
+  isTotal: true
+};
+
+const DURATION = 128;
+
+/* ═══════════════════════════════════════════════════════════════
+   GÉOMÉTRIE
+   Rayon Lune / Rayon Soleil (Lune au périgée le 12/08/2026)
+   ═══════════════════════════════════════════════════════════════ */
+const MR = 1.04; // Moon radius ratio
+
+/* Aire d'intersection de deux disques (rayons normalisés r1=1, r2=MR, dist d) */
+function overlap(d) {
+  const r1 = 1.0, r2 = MR;
+  if (d >= r1+r2) return 0;
+  if (d+r2 <= r1) return Math.PI*r2*r2;
+  if (d+r1 <= r2) return Math.PI*r1*r1;
+  const cA = Math.max(-1, Math.min(1, (d*d+r1*r1-r2*r2)/(2*d*r1)));
+  const cB = Math.max(-1, Math.min(1, (d*d+r2*r2-r1*r1)/(2*d*r2)));
+  const a = Math.acos(cA), b = Math.acos(cB);
+  return r1*r1*a + r2*r2*b - 0.5*(Math.sin(2*a)*r1*r1 + Math.sin(2*b)*r2*r2);
+}
+
+/* Obscuration = overlap / aire Soleil */
+function obs(d) { return overlap(d) / Math.PI; }
+
+/* Distance centre-à-centre pour une obscuration cible (dichotomie) */
+function distForObs(targetObs) {
+  if (targetObs >= 1.0) return 0.0;
+  if (targetObs <= 0.0) return MR + 2.0;
+  const tgt = targetObs * Math.PI;
+  let lo = 0, hi = MR + 1;
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo+hi)/2;
+    overlap(mid) > tgt ? (lo = mid) : (hi = mid);
+  }
+  return (lo+hi)/2;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRAJECTOIRE — interpolation linéaire pure C1 → C4
+   
+   Principe :
+   - Axe de transit incliné à -28° (Lune entre haut-droite → bas-gauche)
+   - Composante perpendiculaire (impact) = D_MAX (distance au MAX)
+   - Composante axiale = 0 au MAX, calibrée pour que dist = 1+MR exactement à C1 et C4
+
+   Calibration précise (calculée en Python) :
+   - axial_contact = sqrt((1+MR)² - impact²)  [distance axiale au contact]
+   - axialEntry = +axial_contact  (à C1)
+   - axialExit  = -axial_contact * (1-p_max)/p_max  (à C4, vitesse uniforme)
+
+   RÉSULTAT : le premier contact visuel coïncide exactement avec C1,
+   et le dernier contact coïncide exactement avec C4.
+   ═══════════════════════════════════════════════════════════════ */
+
+/*
+  Direction calée sur les vignettes de l'Observatoire de Paris.
+  L'axe de transit est incliné : la Lune entre en bas-droite (C1), passe sous
+  le Soleil en restant légèrement à gauche au maximum, et sort vers la gauche (C4).
+  L'impact pointe vers le bas-gauche → le croissant résiduel est EN HAUT, penché
+  vers la DROITE, exactement comme sur la vignette d'Arras.
+  Axe et impact restent orthogonaux pour caler les contacts exactement sur C1/C4.
+*/
+const TILT = 20 * Math.PI / 180;                  // inclinaison du transit
+const AX = Math.cos(TILT), AY = Math.sin(TILT);   // axe : bas-droite → haut-gauche
+const PX = -Math.sin(TILT), PY = Math.cos(TILT);  // impact vers le bas-gauche
+
+function buildTraj(city) {
+  const p_max  = (city.MAX - city.C1) / (city.C4 - city.C1);
+  const impact = distForObs(city.maxObs);              // D_MAX (perpendiculaire)
+  const axialC = Math.sqrt((1+MR)*(1+MR) - impact*impact); // axial au contact
+  // Vitesse uniforme → axialEntry/p_max = axialExit/(1-p_max) = axialC (total)
+  const axialEntry =  axialC;                          // composante axiale à C1
+  const axialExit  = -axialC * (1-p_max) / p_max;     // composante axiale à C4
+
+  // Vecteurs d'entrée et sortie en coords sunR centrées sur (0,0)
+  const ex = axialEntry*AX + impact*PX;
+  const ey = axialEntry*AY + impact*PY;
+  const ox = axialExit *AX + impact*PX;
+  const oy = axialExit *AY + impact*PY;
+  return { ex, ey, ox, oy, impact };
+}
+
+const TRAJ_A = buildTraj(A);
+const TRAJ_O = buildTraj(O);
+
+/* Position de la Lune à l'instant t — INTERPOLATION LINÉAIRE PURE */
+function moonPos(city, traj, t, sunR, cx, cy) {
+  // p ∈ [0,1] : 0 = C1, 1 = C4. Extrapolé en dehors pour lisser l'entrée/sortie.
+  const p = (t - city.C1) / (city.C4 - city.C1);
+  // Interpolation sans aucune branche sur MAX → mouvement parfaitement uniforme
+  const fx = traj.ex + p * (traj.ox - traj.ex);
+  const fy = traj.ey + p * (traj.oy - traj.ey);
+  return { mx: cx + fx*sunR, my: cy + fy*sunR };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CANVAS
+   ═══════════════════════════════════════════════════════════════ */
+const cA = document.getElementById('canvasArras');
+const cO = document.getElementById('canvasOviedo');
+const ctxA = cA.getContext('2d');
+const ctxO = cO.getContext('2d');
+
+function resize() {
+  const pA = document.getElementById('panelArras');
+  const pO = document.getElementById('panelOviedo');
+  cA.width = pA.clientWidth; cA.height = pA.clientHeight;
+  cO.width = pO.clientWidth; cO.height = pO.clientHeight;
+  render(currentMin);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESSIN
+   ═══════════════════════════════════════════════════════════════ */
+function drawPanel(ctx, city, traj, t, W, H, phaseEl) {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,W,H);
+
+  const sunR = Math.min(W,H) * 0.27;
+  const monR = sunR * MR;
+  const cx = W/2, cy = H/2;
+
+  // Position Lune (calculée même hors [C1,C4] pour continuité)
+  const { mx, my } = moonPos(city, traj, t, sunR, cx, cy);
+
+  // Distance normalisée et obscuration
+  const dPx = Math.hypot(mx-cx, my-cy);
+  const dN  = dPx / sunR;
+  const inEclipse = t >= city.C1 && t <= city.C4;
+  const curObs = inEclipse ? obs(dN) : 0;
+
+  // Totalité Oviedo
+  const inTotality = city.isTotal && t >= city.C2 && t <= city.C3;
+
+  // Phase label
+  if (inTotality) {
+    phaseEl.textContent = 'Totalité';
+  } else if (curObs > 0.005) {
+    phaseEl.textContent = Math.round(curObs*100) + ' %';
+  } else {
+    phaseEl.textContent = '';
+  }
+
+  /* ── Couronne solaire (Oviedo, totalité) ── */
+  if (inTotality) {
+    // Halo diffus
+    const g = ctx.createRadialGradient(cx,cy, sunR*0.88, cx,cy, sunR*3.2);
+    g.addColorStop(0,    'rgba(255,248,210,0.90)');
+    g.addColorStop(0.08, 'rgba(255,230,165,0.72)');
+    g.addColorStop(0.28, 'rgba(255,200, 90,0.38)');
+    g.addColorStop(0.55, 'rgba(255,160, 50,0.12)');
+    g.addColorStop(1,    'rgba(255,120, 20,0)');
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx,cy,sunR*3.2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    // Streamers
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    for (let i=0; i<16; i++) {
+      const a  = (i/16)*Math.PI*2 + 0.18;
+      const r1 = sunR*1.04;
+      const r2 = sunR*(1.6+(i%5)*0.28);
+      const gs = ctx.createLinearGradient(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1,
+                                           cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);
+      gs.addColorStop(0,'rgba(255,240,190,0.9)');
+      gs.addColorStop(1,'rgba(255,200,80,0)');
+      ctx.strokeStyle = gs; ctx.lineWidth = sunR*0.05;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+      ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* ── Lueur solaire (hors totalité) ── */
+  if (!inTotality) {
+    const gs = ctx.createRadialGradient(cx,cy,sunR*0.78,cx,cy,sunR*1.65);
+    gs.addColorStop(0,'rgba(253,184,19,0.11)');
+    gs.addColorStop(1,'rgba(253,150,10,0)');
+    ctx.fillStyle = gs;
+    ctx.beginPath(); ctx.arc(cx,cy,sunR*1.65,0,Math.PI*2); ctx.fill();
+  }
+
+  /* ── Disque solaire ── */
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,sunR,0,Math.PI*2);
+  ctx.fillStyle = '#FDB813'; ctx.fill();
+  ctx.restore();
+
+  /* ── Disque lunaire — visible seulement dans [C1, C4] ── */
+  if (inEclipse) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(mx,my,monR,0,Math.PI*2);
+    ctx.fillStyle = '#06060b'; ctx.fill();
+    // Bord lunaire subtil
+    ctx.strokeStyle = 'rgba(50,50,70,0.28)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FORMAT HEURE  HH:MM
+   ═══════════════════════════════════════════════════════════════ */
+function fmt(minFromT0) {
+  const ts = T0_SEC + minFromT0*60;
+  const h  = Math.floor(ts/3600) % 24;
+  const mn = Math.floor((ts%3600)/60);
+  return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOUCLE
+   ═══════════════════════════════════════════════════════════════ */
+let currentMin = 0;
+
+function render(t) {
+  currentMin = t;
+  drawPanel(ctxA, A, TRAJ_A, t, cA.width, cA.height, document.getElementById('phaseArras'));
+  drawPanel(ctxO, O, TRAJ_O, t, cO.width, cO.height, document.getElementById('phaseOviedo'));
+  document.getElementById('timeArras').textContent  = fmt(t);
+  document.getElementById('timeOviedo').textContent = fmt(t);
+}
+
+const slider = document.getElementById('slider');
+slider.addEventListener('input', () => render(parseFloat(slider.value)));
+
+/* Animation */
+let playing=false, animId=null, lastTs=null;
+const SPEED = 1/0.38; // 1 min réelle = 0.38 s
+
+function togglePlay() {
+  const btn = document.getElementById('playBtn');
+  if (playing) {
+    playing=false; cancelAnimationFrame(animId);
+    btn.innerHTML='&#9654; Lancer'; lastTs=null; return;
+  }
+  if (currentMin >= DURATION) { currentMin=0; slider.value=0; }
+  playing=true; btn.innerHTML='&#9646;&#9646; Pause';
+  function step(ts) {
+    if (!playing) return;
+    if (lastTs !== null) {
+      const dt = Math.min((ts-lastTs)/1000, 0.08); // cap 80ms
+      currentMin = Math.min(currentMin + dt*SPEED, DURATION);
+      slider.value = currentMin;
+      render(currentMin);
+      if (currentMin >= DURATION) {
+        playing=false; btn.innerHTML='&#9654; Lancer'; lastTs=null; return;
+      }
+    }
+    lastTs=ts; animId=requestAnimationFrame(step);
+  }
+  animId=requestAnimationFrame(step);
+}
+
+window.addEventListener('resize', resize);
+resize();
+render(0);
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   HAUTEUR DU SOLEIL SUR L'HORIZON — module additif indépendant
+   Valeurs calculées avec astropy (12/08/2026, pas de 1 min depuis
+   T0 = 19h19 CEST). Index = minutes depuis T0, plage slider 0..128.
+   Arras  : 50.291°N 2.781°E   ·   Oviedo : 43.362°N -5.844°E
+   Ce script ne modifie pas l'animation : il lit seulement currentMin.
+   ═══════════════════════════════════════════════════════════════ */
+const ALT_ARRAS = [16.87,16.71,16.55,16.39,16.23,16.08,15.92,15.76,15.60,15.44,15.28,15.12,14.96,14.80,14.64,14.48,14.32,14.16,14.01,13.85,13.69,13.53,13.37,13.21,13.05,12.89,12.74,12.58,12.42,12.26,12.10,11.94,11.79,11.63,11.47,11.31,11.16,11.00,10.84,10.68,10.53,10.37,10.21,10.06,9.90,9.74,9.58,9.43,9.27,9.12,8.96,8.80,8.65,8.49,8.34,8.18,8.02,7.87,7.71,7.56,7.40,7.25,7.09,6.94,6.78,6.63,6.48,6.32,6.17,6.01,5.86,5.71,5.55,5.40,5.25,5.09,4.94,4.79,4.64,4.48,4.33,4.18,4.03,3.88,3.72,3.57,3.42,3.27,3.12,2.97,2.82,2.67,2.52,2.37,2.22,2.07,1.92,1.77,1.62,1.47,1.33,1.18,1.03,0.88,0.73,0.59,0.44,0.29,0.14,-0.00,-0.15,-0.30,-0.44,-0.59,-0.73,-0.88,-1.02,-1.17,-1.31,-1.46,-1.60,-1.75,-1.89,-2.03,-2.18,-2.32,-2.46,-2.61,-2.75];
+const ALT_OVIEDO = [22.65,22.46,22.28,22.10,21.92,21.74,21.55,21.37,21.19,21.01,20.83,20.64,20.46,20.28,20.10,19.92,19.74,19.55,19.37,19.19,19.01,18.83,18.64,18.46,18.28,18.10,17.92,17.74,17.56,17.37,17.19,17.01,16.83,16.65,16.47,16.29,16.10,15.92,15.74,15.56,15.38,15.20,15.02,14.84,14.66,14.48,14.30,14.12,13.94,13.75,13.57,13.39,13.21,13.03,12.85,12.67,12.49,12.31,12.13,11.95,11.78,11.60,11.42,11.24,11.06,10.88,10.70,10.52,10.34,10.16,9.98,9.81,9.63,9.45,9.27,9.09,8.91,8.74,8.56,8.38,8.20,8.03,7.85,7.67,7.49,7.32,7.14,6.96,6.79,6.61,6.43,6.26,6.08,5.91,5.73,5.55,5.38,5.20,5.03,4.85,4.68,4.50,4.33,4.15,3.98,3.81,3.63,3.46,3.28,3.11,2.94,2.76,2.59,2.42,2.24,2.07,1.90,1.73,1.55,1.38,1.21,1.04,0.87,0.70,0.53,0.36,0.18,0.01,-0.16];
+
+/* Contacts et coucher (minutes depuis T0), pour repères */
+const ALT_C4_A = 108.08, ALT_C4_O = 122.00;
+
+const COL_A = '#ffc830';   // Arras  (or, ville hôte)
+const COL_O = '#6cc5ff';   // Oviedo (bleu ciel)
+
+const altCanvas = document.getElementById('altCanvas');
+const altCtx = altCanvas.getContext('2d');
+
+function altAt(arr, m) {
+  if (m <= 0) return arr[0];
+  if (m >= 128) return arr[128];
+  const i = Math.floor(m), f = m - i;
+  return arr[i] + f * (arr[i+1] - arr[i]);
+}
+
+function sizeAlt() {
+  altCanvas.width = document.getElementById('altWrap').clientWidth;
+  altCanvas.height = 110;
+}
+
+function fmtAlt(m) {
+  const ts = 19*3600 + 19*60 + m*60;
+  const h = Math.floor(ts/3600) % 24;
+  const mn = Math.floor((ts%3600)/60);
+  return String(h).padStart(2,'0') + ':' + String(mn).padStart(2,'0');
+}
+
+function drawAltitude(t) {
+  const X = altCtx, W = altCanvas.width, H = altCanvas.height;
+  if (!W) return;
+  X.clearRect(0,0,W,H);
+
+  const ml = 10, mr = 10, mtop = 24, mbot = 16;
+  const pw = W - ml - mr, ph = H - mtop - mbot;
+  const aMin = -2, aMax = 24;
+  const px = m => ml + (m/128) * pw;
+  const py = a => mtop + (aMax - a) / (aMax - aMin) * ph;
+
+  // Bande sous l'horizon (Soleil couché)
+  X.fillStyle = 'rgba(40,28,58,0.55)';
+  X.fillRect(ml, py(0), pw, py(aMin) - py(0));
+
+  // Grille
+  X.strokeStyle = 'rgba(255,255,255,0.06)'; X.lineWidth = 1;
+  X.fillStyle = '#666';
+  X.font = '9px Helvetica, Arial, sans-serif';
+  X.textBaseline = 'middle'; X.textAlign = 'left';
+  [10,20].forEach(a => {
+    const y = py(a);
+    X.beginPath(); X.moveTo(ml, y); X.lineTo(ml + pw, y); X.stroke();
+    X.fillText(a + '°', ml + 3, y - 6);
+  });
+
+  // Repères de temps (bas)
+  X.textBaseline = 'top'; X.fillStyle = '#5c5c5c';
+  X.font = '9px Helvetica, Arial, sans-serif';
+  [0,30,60,90,120].forEach(m => {
+    const x = px(m);
+    X.strokeStyle = 'rgba(255,255,255,0.05)';
+    X.beginPath(); X.moveTo(x, mtop); X.lineTo(x, mtop + ph); X.stroke();
+    X.textAlign = m === 0 ? 'left' : (m === 120 ? 'right' : 'center');
+    X.fillText(fmtAlt(m), x, mtop + ph + 4);
+  });
+
+  // Ligne d'horizon
+  X.strokeStyle = 'rgba(255,120,60,0.7)'; X.lineWidth = 1.3;
+  X.setLineDash([5,4]);
+  X.beginPath(); X.moveTo(ml, py(0)); X.lineTo(ml + pw, py(0)); X.stroke();
+  X.setLineDash([]);
+  X.fillStyle = 'rgba(255,150,90,0.85)'; X.textAlign = 'left'; X.textBaseline = 'bottom';
+  X.font = '9px Helvetica, Arial, sans-serif';
+  X.fillText('Horizon', ml + 3, py(0) - 2);
+  X.fillStyle = 'rgba(150,130,170,0.8)'; X.textBaseline = 'top';
+  X.fillText('Soleil couché', ml + 3, py(0) + 3);
+
+  // Courbes
+  function curve(arr, color) {
+    X.strokeStyle = color; X.lineWidth = 2; X.beginPath();
+    for (let m = 0; m <= 128; m++) {
+      const x = px(m), y = py(altAt(arr, m));
+      m === 0 ? X.moveTo(x, y) : X.lineTo(x, y);
+    }
+    X.stroke();
+  }
+  curve(ALT_OVIEDO, COL_O);
+  curve(ALT_ARRAS, COL_A);
+
+  // Repères C4 (dernier contact) sur chaque courbe
+  function c4dot(m, arr, color) {
+    const x = px(m), y = py(altAt(arr, m));
+    X.fillStyle = '#0c0c0c'; X.beginPath(); X.arc(x, y, 4, 0, 7); X.fill();
+    X.strokeStyle = color; X.lineWidth = 1.6; X.beginPath(); X.arc(x, y, 4, 0, 7); X.stroke();
+  }
+  c4dot(ALT_C4_O, ALT_OVIEDO, COL_O);
+  c4dot(ALT_C4_A, ALT_ARRAS, COL_A);
+
+  // Marqueur de temps courant
+  const tc = Math.max(0, Math.min(t, 128));
+  const xm = px(tc);
+  X.strokeStyle = 'rgba(255,255,255,0.45)'; X.lineWidth = 1;
+  X.beginPath(); X.moveTo(xm, mtop - 3); X.lineTo(xm, mtop + ph); X.stroke();
+  const aA = altAt(ALT_ARRAS, tc), aO = altAt(ALT_OVIEDO, tc);
+  X.fillStyle = COL_O; X.beginPath(); X.arc(xm, py(aO), 3.3, 0, 7); X.fill();
+  X.fillStyle = COL_A; X.beginPath(); X.arc(xm, py(aA), 3.3, 0, 7); X.fill();
+
+  // Titre + lecture en direct
+  X.textBaseline = 'alphabetic';
+  X.textAlign = 'left'; X.fillStyle = '#888';
+  X.font = '600 10px Helvetica, Arial, sans-serif';
+  X.fillText("HAUTEUR DU SOLEIL SUR L'HORIZON", ml, 14);
+
+  X.textAlign = 'right';
+  X.font = '600 11px Helvetica, Arial, sans-serif';
+  const oTxt = 'Oviedo ' + aO.toFixed(1) + '°';
+  X.fillStyle = COL_O; X.fillText(oTxt, W - mr, 14);
+  const ow = X.measureText(oTxt).width;
+  X.fillStyle = COL_A; X.fillText('Arras ' + aA.toFixed(1) + '°', W - mr - ow - 16, 14);
+  X.textAlign = 'left';
+}
+
+/* Boucle de synchronisation : lit currentMin sans toucher render() */
+let _lastAltMin = NaN;
+function altLoop() {
+  if (currentMin !== _lastAltMin) {
+    drawAltitude(currentMin);
+    _lastAltMin = currentMin;
+  }
+  requestAnimationFrame(altLoop);
+}
+
+window.addEventListener('resize', () => { sizeAlt(); drawAltitude(currentMin); });
+sizeAlt();
+drawAltitude(0);
+requestAnimationFrame(altLoop);
+</script>
+</body>
+</html>

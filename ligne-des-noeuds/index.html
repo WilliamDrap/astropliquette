@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbite lunaire et ligne des nœuds</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1026; font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  #scene { width: 100vw; height: 100vh; display: block; cursor: grab; }
+  #panel {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: rgba(11, 16, 38, 0.82); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px; padding: 14px 18px; color: #e8eaf2; max-width: 320px;
+    backdrop-filter: blur(4px);
+  }
+  #panel h1 { font-size: 17px; font-weight: 500; margin: 0 0 10px; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; }
+  .row label { color: #aab0c8; min-width: 92px; }
+  .row input[type=range] { flex: 1; accent-color: #ff9933; }
+  .row .val { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  button {
+    font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    background: transparent; color: #e8eaf2; border: 1px solid rgba(255,255,255,0.3);
+  }
+  button:hover { background: rgba(255,255,255,0.08); }
+  button.active { background: #ff9933; color: #0b1026; border-color: #ff9933; }
+  #legend {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    color: #aab0c8; font-size: 12px; line-height: 1.6;
+    background: rgba(11, 16, 38, 0.82); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px; padding: 10px 14px;
+  }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  #hint { position: fixed; bottom: 34px; right: 16px; z-index: 10; color: #667; font-size: 12px; }
+  #credit { position: fixed; bottom: 14px; right: 16px; z-index: 10; color: #4a5068; font-size: 11px; }
+  #ecl-msg {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+    background: rgba(255, 153, 51, 0.92); color: #0b1026; font-size: 14px; font-weight: 500;
+    padding: 8px 18px; border-radius: 999px; opacity: 0; transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  @media (max-width: 640px) { #panel { max-width: calc(100vw - 32px); } #hint { display: none; } }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<div id="panel">
+  <h1>Orbite lunaire et ligne des nœuds</h1>
+  <div class="row">
+    <label for="inc">Inclinaison</label>
+    <input type="range" id="inc" min="5" max="30" step="0.1" value="18">
+    <span class="val" id="incOut">18°</span>
+  </div>
+  <div class="row">
+    <label for="pos">Terre (mois)</label>
+    <input type="range" id="pos" min="0" max="360" step="1" value="40">
+    <span class="val" id="posOut">40°</span>
+  </div>
+  <div class="row">
+    <label for="moonPos">Lune</label>
+    <input type="range" id="moonPos" min="0" max="360" step="0.5" value="46">
+    <span class="val" id="moonPosOut">46°</span>
+  </div>
+  <div class="row" style="gap:8px; flex-wrap:wrap;">
+    <button id="anim">Animer l'année</button>
+    <button id="moonPause">Figer la Lune</button>
+    <button id="snapNode">Placer au nœud</button>
+    <button id="center">Centrer la Terre</button>
+    <button id="real">Valeur réelle 5,15°</button>
+    <button id="edge">Vue par la tranche</button>
+  </div>
+</div>
+
+<div id="legend">
+  <div><span class="dot" style="background:#4a8fe8;"></span>Plan de l'écliptique et orbite de la Terre</div>
+  <div><span class="dot" style="background:#dddddd;"></span>Orbite de la Lune (échelle exagérée)</div>
+  <div><span class="dot" style="background:#ff9933;"></span>Ligne des nœuds et nœuds ascendant / descendant</div>
+</div>
+
+<div id="hint">Glisser pour tourner &middot; molette pour zoomer</div>
+<div id="credit">&copy; William Drapeaud</div>
+<div id="ecl-msg">Saison d'éclipses : la ligne des nœuds pointe vers le Soleil</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const container = document.getElementById('scene');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio || 1);
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+scene.add(new THREE.PointLight(0xfff2cc, 1.4, 0));
+
+const sun = new THREE.Mesh(
+  new THREE.SphereGeometry(2.2, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xf5c542 })
+);
+scene.add(sun);
+
+const R = 14;
+const eclPlane = new THREE.Mesh(
+  new THREE.RingGeometry(0.1, R + 4, 96),
+  new THREE.MeshBasicMaterial({ color: 0x2a6fd6, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
+);
+eclPlane.rotation.x = -Math.PI / 2;
+scene.add(eclPlane);
+
+const eclOrbit = new THREE.Mesh(
+  new THREE.TorusGeometry(R, 0.05, 8, 128),
+  new THREE.MeshBasicMaterial({ color: 0x4a8fe8 })
+);
+eclOrbit.rotation.x = Math.PI / 2;
+scene.add(eclOrbit);
+
+const earthGroup = new THREE.Group();
+scene.add(earthGroup);
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(0.7, 24, 24),
+  new THREE.MeshPhongMaterial({ color: 0x3a86ff })
+);
+earthGroup.add(earth);
+
+const rL = 4.2;
+const lunarGroup = new THREE.Group();
+earthGroup.add(lunarGroup);
+
+const lunarPlane = new THREE.Mesh(
+  new THREE.CircleGeometry(rL, 64),
+  new THREE.MeshBasicMaterial({ color: 0xcccccc, transparent: true, opacity: 0.14, side: THREE.DoubleSide })
+);
+lunarPlane.rotation.x = -Math.PI / 2;
+lunarGroup.add(lunarPlane);
+
+const lunarOrbit = new THREE.Mesh(
+  new THREE.TorusGeometry(rL, 0.04, 8, 96),
+  new THREE.MeshBasicMaterial({ color: 0xdddddd })
+);
+lunarOrbit.rotation.x = Math.PI / 2;
+lunarGroup.add(lunarOrbit);
+
+const moon = new THREE.Mesh(
+  new THREE.SphereGeometry(0.28, 16, 16),
+  new THREE.MeshPhongMaterial({ color: 0xbbbbbb })
+);
+lunarGroup.add(moon);
+
+const nodeMat = new THREE.MeshBasicMaterial({ color: 0xff9933 });
+const nodeLine = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, rL * 2 + 2, 8), nodeMat);
+nodeLine.rotation.x = Math.PI / 2;
+earthGroup.add(nodeLine);
+const nodeA = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), nodeMat);
+const nodeB = nodeA.clone();
+nodeA.position.z = rL;
+nodeB.position.z = -rL;
+earthGroup.add(nodeA);
+earthGroup.add(nodeB);
+
+const starGeo = new THREE.BufferGeometry();
+const sp = [];
+for (let i = 0; i < 600; i++) {
+  const r = 140;
+  sp.push((Math.random() - 0.5) * r, (Math.random() - 0.5) * r, (Math.random() - 0.5) * r);
+}
+starGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x8899bb, size: 0.25 })));
+
+let incDeg = 18, earthAngle = 40 * Math.PI / 180, moonAngle = 0.8;
+
+const eclMsg = document.getElementById('ecl-msg');
+function update() {
+  earthGroup.position.set(R * Math.cos(earthAngle), 0, -R * Math.sin(earthAngle));
+  lunarGroup.rotation.z = incDeg * Math.PI / 180;
+  moon.position.set(rL * Math.cos(moonAngle), 0, -rL * Math.sin(moonAngle));
+  const deg = ((earthAngle * 180 / Math.PI) % 360 + 360) % 360;
+  const nearSeason = Math.min(Math.abs(deg - 90), Math.abs(deg - 270)) < 12;
+  eclMsg.style.opacity = nearSeason ? 1 : 0;
+}
+update();
+
+let camTheta = 0.9, camPhi = 0.45, camDist = 46;
+let followEarth = false;
+const _camLook = new THREE.Vector3(0, 0, 0);
+function placeCam() {
+  if (followEarth) earthGroup.getWorldPosition(_camLook);
+  else _camLook.set(0, 0, 0);
+  camera.position.set(
+    _camLook.x + camDist * Math.cos(camPhi) * Math.cos(camTheta),
+    _camLook.y + camDist * Math.sin(camPhi),
+    _camLook.z + camDist * Math.cos(camPhi) * Math.sin(camTheta)
+  );
+  camera.lookAt(_camLook);
+}
+placeCam();
+
+let dragging = false, px = 0, py = 0;
+const el = renderer.domElement;
+el.addEventListener('pointerdown', e => {
+  dragging = true; px = e.clientX; py = e.clientY;
+  container.style.cursor = 'grabbing';
+  el.setPointerCapture(e.pointerId);
+});
+el.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  camTheta += (e.clientX - px) * 0.008;
+  camPhi = Math.min(1.5, Math.max(-1.5, camPhi + (e.clientY - py) * 0.008));
+  px = e.clientX; py = e.clientY;
+  placeCam();
+});
+el.addEventListener('pointerup', () => { dragging = false; container.style.cursor = 'grab'; });
+el.addEventListener('wheel', e => {
+  e.preventDefault();
+  camDist = Math.min(100, Math.max(4, camDist + e.deltaY * 0.05));
+  placeCam();
+}, { passive: false });
+
+const incSlider = document.getElementById('inc');
+const incOut = document.getElementById('incOut');
+const posSlider = document.getElementById('pos');
+const posOut = document.getElementById('posOut');
+const animBtn = document.getElementById('anim');
+const realBtn = document.getElementById('real');
+const edgeBtn = document.getElementById('edge');
+
+incSlider.oninput = () => {
+  incDeg = +incSlider.value;
+  incOut.textContent = (Math.round(incDeg * 10) / 10) + '°';
+  update();
+};
+posSlider.oninput = () => {
+  earthAngle = +posSlider.value * Math.PI / 180;
+  posOut.textContent = posSlider.value + '°';
+  update();
+};
+
+const moonBtn = document.getElementById('moonPause');
+const moonPosSlider = document.getElementById('moonPos');
+const moonPosOut = document.getElementById('moonPosOut');
+const snapBtn = document.getElementById('snapNode');
+let moonRunning = true;
+
+function setMoonUI() {
+  moonBtn.textContent = moonRunning ? 'Figer la Lune' : 'Relancer la Lune';
+  moonBtn.classList.toggle('active', !moonRunning);
+}
+function syncMoonSlider() {
+  const deg = ((moonAngle * 180 / Math.PI) % 360 + 360) % 360;
+  moonPosSlider.value = Math.round(deg * 2) / 2;
+  moonPosOut.textContent = Math.round(deg) + '°';
+}
+moonBtn.onclick = () => {
+  moonRunning = !moonRunning;
+  setMoonUI();
+};
+moonPosSlider.oninput = () => {
+  moonRunning = false;
+  setMoonUI();
+  moonAngle = +moonPosSlider.value * Math.PI / 180;
+  moonPosOut.textContent = Math.round(+moonPosSlider.value) + '°';
+  update();
+};
+snapBtn.onclick = () => {
+  moonRunning = false;
+  setMoonUI();
+  const deg = ((moonAngle * 180 / Math.PI) % 360 + 360) % 360;
+  const target = Math.abs(deg - 90) <= Math.abs(deg - 270) ? 90 : 270;
+  moonAngle = target * Math.PI / 180;
+  syncMoonSlider();
+  update();
+};
+
+let animating = false;
+animBtn.onclick = () => {
+  animating = !animating;
+  animBtn.textContent = animating ? 'Arrêter' : "Animer l'année";
+  animBtn.classList.toggle('active', animating);
+};
+
+const centerBtn = document.getElementById('center');
+centerBtn.onclick = () => {
+  followEarth = !followEarth;
+  centerBtn.textContent = followEarth ? 'Centrer le Soleil' : 'Centrer la Terre';
+  centerBtn.classList.toggle('active', followEarth);
+  if (followEarth && camDist > 20) camDist = 14;
+  if (!followEarth && camDist < 30) camDist = 46;
+  placeCam();
+};
+
+realBtn.onclick = () => {
+  incDeg = 5.15;
+  incSlider.value = 5.15;
+  incOut.textContent = '5,15°';
+  update();
+};
+
+let edgeTarget = null;
+edgeBtn.onclick = () => {
+  edgeTarget = { theta: Math.PI / 2, phi: 0.02, dist: 55 };
+};
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (animating) {
+    earthAngle += 0.004;
+    const deg = Math.round((((earthAngle * 180 / Math.PI) % 360) + 360) % 360);
+    posSlider.value = deg;
+    posOut.textContent = deg + '°';
+  }
+  if (edgeTarget) {
+    camTheta += (edgeTarget.theta - camTheta) * 0.06;
+    camPhi += (edgeTarget.phi - camPhi) * 0.06;
+    camDist += (edgeTarget.dist - camDist) * 0.06;
+    placeCam();
+    if (Math.abs(edgeTarget.phi - camPhi) < 0.005 && Math.abs(edgeTarget.theta - camTheta) < 0.005) edgeTarget = null;
+  }
+  if (moonRunning) { moonAngle += 0.02; syncMoonSlider(); }
+  update();
+  placeCam();
+  renderer.render(scene, camera);
+}
+loop();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

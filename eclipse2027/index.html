@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Éclipse du 2 août 2027 · Arras · Louxor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .stage { display: flex; flex: 1; min-height: 0; }
+  .panel {
+    flex: 1; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .panel-left { border-right: 1px solid #1e1e1e; }
+  canvas { display: block; }
+
+  .city-label {
+    position: absolute; top: 18px; left: 0; right: 0;
+    text-align: center; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase; color: #fff;
+    text-shadow: 0 0 8px #000, 0 0 18px #000;
+  }
+  .city-sub {
+    position: absolute; top: 38px; left: 0; right: 0;
+    text-align: center; font-size: 10px; font-weight: 500;
+    letter-spacing: 0.14em; color: #8d8d8d;
+    text-shadow: 0 0 8px #000;
+  }
+  .time-label {
+    position: absolute; bottom: 18px; left: 0; right: 0;
+    text-align: center; font-size: 24px; font-weight: 300;
+    letter-spacing: 0.12em; color: #fff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px #000, 0 0 22px #000;
+  }
+  .tz-label {
+    position: absolute; bottom: 6px; left: 0; right: 0;
+    text-align: center; font-size: 9px; letter-spacing: 0.2em;
+    color: #6d6d6d; text-transform: uppercase;
+  }
+  .phase-label {
+    position: absolute; bottom: 56px; left: 0; right: 0;
+    text-align: center; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: #ffc830; text-shadow: 0 0 10px #000, 0 0 20px #000;
+    min-height: 14px;
+  }
+
+  .event-label {
+    position: absolute; bottom: 78px; left: 0; right: 0;
+    text-align: center; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.14em; color: #fff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px #000, 0 0 20px #000;
+    min-height: 15px; opacity: 0; transition: opacity 0.4s;
+  }
+  .event-label.on { opacity: 1; }
+  .event-label .tag {
+    color: #ffc830; text-transform: uppercase;
+    letter-spacing: 0.22em; font-size: 10px; font-weight: 700;
+  }
+  .event-label.cool .tag { color: #6cc5ff; }
+
+  /* Écrans étroits : le repère doit tenir sur une seule ligne */
+  @media (max-width: 760px) {
+    .event-label { font-size: 9px; letter-spacing: 0.04em; bottom: 74px; }
+    .event-label .tag { font-size: 8.5px; letter-spacing: 0.10em; }
+  }
+
+  .controls {
+    padding: 11px 22px 14px; display: flex; align-items: center; gap: 12px;
+    background: #0c0c0c; border-top: 1px solid #2a2a2a; flex-shrink: 0;
+  }
+  .time-bound {
+    font-size: 12px; color: #bbb; letter-spacing: 0.08em;
+    white-space: nowrap; min-width: 62px; font-variant-numeric: tabular-nums;
+  }
+  .time-bound.right { text-align: right; }
+  input[type=range] {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 3px; background: #383838; outline: none; border-radius: 2px; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; cursor: pointer;
+    box-shadow: 0 0 6px rgba(255,255,255,0.4);
+    transition: background 0.15s, transform 0.1s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { background: #ffc830; transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: none; cursor: pointer;
+  }
+  input[type=range]::-moz-range-track { height: 3px; background: #383838; border-radius: 2px; }
+  .play-btn {
+    background: #1c1c1c; border: 1px solid #555; color: #ddd;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 7px 20px; cursor: pointer; border-radius: 3px; white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .play-btn:hover { background: #2a2a2a; border-color: #999; color: #fff; }
+
+  .altitude {
+    background: #0c0c0c; border-top: 1px solid #2a2a2a;
+    flex-shrink: 0; padding: 6px 0 4px;
+  }
+  #altCanvas { display: block; }
+  .copyright {
+    background: #0c0c0c; border-top: 1px solid #1a1a1a;
+    text-align: center; color: #6e6e6e; font-size: 11px;
+    letter-spacing: 0.06em; padding: 9px 12px 11px; flex-shrink: 0;
+  }
+  .copyright b { color: #9a9a9a; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="panel panel-left" id="panelArras">
+    <div class="city-label">Arras · 46 %</div>
+    <div class="city-sub">Soleil à 43° au maximum</div>
+    <canvas id="canvasArras"></canvas>
+    <div class="event-label" id="eventArras"></div>
+    <div class="phase-label" id="phaseArras"></div>
+    <div class="time-label" id="timeArras">10:00</div>
+    <div class="tz-label">heure légale française</div>
+  </div>
+  <div class="panel" id="panelLouxor">
+    <div class="city-label">Louxor · totalité</div>
+    <div class="city-sub">Soleil à 82° au maximum</div>
+    <canvas id="canvasLouxor"></canvas>
+    <div class="event-label cool" id="eventLouxor"></div>
+    <div class="phase-label" id="phaseLouxor"></div>
+    <div class="time-label" id="timeLouxor">11:00</div>
+    <div class="tz-label">heure légale égyptienne</div>
+  </div>
+</div>
+<div class="controls">
+  <span class="time-bound">08:00 UTC</span>
+  <input type="range" id="slider" min="0" max="210" value="0" step="0.02">
+  <span class="time-bound right">11:30 UTC</span>
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">&#9654; Lancer</button>
+</div>
+
+<div class="altitude" id="altWrap">
+  <canvas id="altCanvas"></canvas>
+</div>
+
+<div class="copyright">
+  &copy; <b>William Drapeaud/GSA</b> &nbsp;&middot;&nbsp; Éclipse de Soleil du 2 août 2027 &nbsp;&middot;&nbsp; positions calculées avec l'éphéméride JPL DE440
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   ÉCLIPSE DU 2 AOÛT 2027 — ARRAS · LOUXOR
+
+   Axe des temps commun = TEMPS UNIVERSEL, origine 08:00 UTC,
+   durée 210 minutes. Arras est à UTC+2, Louxor à UTC+3 (heure
+   d'été égyptienne en vigueur du 30 avril au 29 octobre 2027),
+   d'où deux horloges différentes pour un même instant physique.
+
+   GÉOMÉTRIE : contrairement à l'animation de 2026, la trajectoire
+   n'est pas paramétrée à la main. Les tableaux MX / MY donnent la
+   position apparente du centre de la Lune par rapport au centre du
+   Soleil, exprimée en rayons solaires, dans le repère de l'observateur
+   (x vers la droite quand on fait face au Soleil, y vers le zénith).
+   Calcul topocentrique avec skyfield et l'éphéméride JPL DE440,
+   pas d'une minute, rayon lunaire k = 0.2725076 rayon terrestre.
+   ═══════════════════════════════════════════════════════════════ */
+
+const NMIN = 210;
+
+const MX_A = [1.7706,1.756,1.7413,1.7267,1.712,1.6974,1.6827,1.6681,1.6535,1.6389,1.6242,1.6096,1.595,1.5804,1.5657,1.5511,1.5365,1.5218,1.5072,1.4925,1.4778,1.4631,1.4484,1.4337,1.419,1.4043,1.3895,1.3747,1.3599,1.3451,1.3302,1.3154,1.3005,1.2856,1.2706,1.2556,1.2406,1.2256,1.2105,1.1954,1.1803,1.1651,1.1499,1.1347,1.1194,1.104,1.0887,1.0732,1.0578,1.0423,1.0267,1.0111,0.9954,0.9797,0.9639,0.9481,0.9322,0.9163,0.9003,0.8842,0.8681,0.8519,0.8357,0.8194,0.803,0.7865,0.77,0.7534,0.7368,0.72,0.7032,0.6863,0.6693,0.6522,0.6351,0.6179,0.6005,0.5831,0.5657,0.5481,0.5304,0.5126,0.4948,0.4768,0.4588,0.4406,0.4223,0.404,0.3855,0.367,0.3483,0.3295,0.3106,0.2916,0.2725,0.2532,0.2339,0.2144,0.1948,0.1751,0.1553,0.1353,0.1152,0.095,0.0747,0.0542,0.0336,0.0129,-0.008,-0.029,-0.0501,-0.0714,-0.0928,-0.1144,-0.1361,-0.158,-0.1799,-0.2021,-0.2244,-0.2468,-0.2694,-0.2922,-0.3151,-0.3381,-0.3613,-0.3847,-0.4082,-0.4319,-0.4558,-0.4798,-0.504,-0.5283,-0.5528,-0.5775,-0.6024,-0.6274,-0.6526,-0.6779,-0.7035,-0.7292,-0.7551,-0.7811,-0.8074,-0.8338,-0.8603,-0.8871,-0.9141,-0.9412,-0.9685,-0.996,-1.0237,-1.0515,-1.0795,-1.1078,-1.1362,-1.1647,-1.1935,-1.2225,-1.2516,-1.2809,-1.3104,-1.3401,-1.37,-1.4001,-1.4303,-1.4608,-1.4914,-1.5222,-1.5532,-1.5844,-1.6157,-1.6473,-1.679,-1.7109,-1.743,-1.7753,-1.8078,-1.8404,-1.8732,-1.9062,-1.9394,-1.9727,-2.0063,-2.04,-2.0738,-2.1079,-2.1421,-2.1765,-2.211,-2.2458,-2.2807,-2.3157,-2.3509,-2.3863,-2.4218,-2.4575,-2.4934,-2.5294,-2.5656,-2.6019,-2.6383,-2.6749,-2.7117,-2.7485,-2.7856,-2.8227,-2.86,-2.8975,-2.935,-2.9727,-3.0105];
+const MY_A = [1.2623,1.2332,1.2042,1.1752,1.1462,1.1172,1.0883,1.0593,1.0304,1.0015,0.9726,0.9438,0.9149,0.8861,0.8573,0.8285,0.7998,0.771,0.7423,0.7136,0.685,0.6563,0.6277,0.5991,0.5706,0.542,0.5135,0.4851,0.4566,0.4282,0.3998,0.3714,0.3431,0.3147,0.2865,0.2582,0.23,0.2018,0.1736,0.1455,0.1174,0.0893,0.0613,0.0333,0.0054,-0.0226,-0.0504,-0.0783,-0.1061,-0.1339,-0.1616,-0.1893,-0.217,-0.2446,-0.2721,-0.2997,-0.3272,-0.3546,-0.382,-0.4094,-0.4367,-0.4639,-0.4912,-0.5183,-0.5454,-0.5725,-0.5995,-0.6265,-0.6534,-0.6803,-0.7071,-0.7339,-0.7606,-0.7872,-0.8138,-0.8403,-0.8668,-0.8932,-0.9195,-0.9458,-0.972,-0.9982,-1.0243,-1.0503,-1.0763,-1.1022,-1.128,-1.1537,-1.1794,-1.205,-1.2305,-1.256,-1.2813,-1.3066,-1.3318,-1.357,-1.382,-1.407,-1.4319,-1.4567,-1.4814,-1.506,-1.5305,-1.5549,-1.5793,-1.6035,-1.6276,-1.6517,-1.6756,-1.6995,-1.7232,-1.7468,-1.7704,-1.7938,-1.8171,-1.8403,-1.8633,-1.8863,-1.9091,-1.9319,-1.9545,-1.9769,-1.9993,-2.0215,-2.0436,-2.0656,-2.0874,-2.1091,-2.1306,-2.152,-2.1733,-2.1944,-2.2154,-2.2362,-2.2569,-2.2774,-2.2978,-2.318,-2.3381,-2.358,-2.3777,-2.3972,-2.4166,-2.4359,-2.4549,-2.4738,-2.4924,-2.5109,-2.5293,-2.5474,-2.5653,-2.5831,-2.6006,-2.618,-2.6352,-2.6521,-2.6689,-2.6854,-2.7018,-2.7179,-2.7338,-2.7495,-2.7649,-2.7802,-2.7952,-2.81,-2.8246,-2.8389,-2.853,-2.8669,-2.8805,-2.8939,-2.907,-2.9199,-2.9325,-2.9449,-2.957,-2.9689,-2.9805,-2.9918,-3.0029,-3.0137,-3.0242,-3.0345,-3.0445,-3.0542,-3.0636,-3.0727,-3.0816,-3.0902,-3.0985,-3.1065,-3.1142,-3.1216,-3.1287,-3.1355,-3.1421,-3.1483,-3.1542,-3.1598,-3.1651,-3.1701,-3.1748,-3.1792,-3.1833,-3.187,-3.1905,-3.1936,-3.1964,-3.1989,-3.2011];
+const MX_L = [-0.5561,-0.5486,-0.5411,-0.5335,-0.5258,-0.518,-0.5102,-0.5023,-0.4943,-0.4863,-0.4782,-0.47,-0.4617,-0.4534,-0.445,-0.4366,-0.428,-0.4194,-0.4108,-0.402,-0.3932,-0.3844,-0.3754,-0.3664,-0.3573,-0.3482,-0.339,-0.3297,-0.3204,-0.311,-0.3015,-0.292,-0.2824,-0.2727,-0.263,-0.2532,-0.2434,-0.2335,-0.2235,-0.2135,-0.2034,-0.1933,-0.1831,-0.1729,-0.1626,-0.1523,-0.1419,-0.1314,-0.1209,-0.1104,-0.0998,-0.0892,-0.0786,-0.0679,-0.0572,-0.0464,-0.0356,-0.0248,-0.014,-0.0032,0.0077,0.0185,0.0294,0.0402,0.0511,0.0619,0.0727,0.0835,0.0942,0.1049,0.1156,0.1261,0.1366,0.147,0.1574,0.1676,0.1776,0.1876,0.1974,0.207,0.2164,0.2256,0.2346,0.2433,0.2518,0.2599,0.2677,0.2752,0.2823,0.2889,0.2951,0.3008,0.306,0.3107,0.3147,0.3182,0.3209,0.3229,0.3242,0.3247,0.3244,0.3232,0.3211,0.3181,0.3141,0.3091,0.3031,0.2961,0.288,0.2789,0.2687,0.2575,0.2452,0.2319,0.2176,0.2023,0.186,0.1688,0.1508,0.1319,0.1122,0.0918,0.0708,0.0491,0.0268,0.0041,-0.0191,-0.0427,-0.0667,-0.0909,-0.1154,-0.1401,-0.165,-0.1899,-0.215,-0.2401,-0.2653,-0.2904,-0.3156,-0.3406,-0.3657,-0.3906,-0.4154,-0.4402,-0.4648,-0.4893,-0.5137,-0.5379,-0.562,-0.586,-0.6098,-0.6335,-0.6571,-0.6805,-0.7038,-0.727,-0.75,-0.7729,-0.7957,-0.8183,-0.8408,-0.8632,-0.8856,-0.9078,-0.9299,-0.9519,-0.9738,-0.9956,-1.0173,-1.039,-1.0605,-1.082,-1.1035,-1.1248,-1.1461,-1.1673,-1.1885,-1.2097,-1.2307,-1.2518,-1.2727,-1.2937,-1.3146,-1.3355,-1.3563,-1.3771,-1.3979,-1.4187,-1.4394,-1.4601,-1.4808,-1.5015,-1.5222,-1.5428,-1.5635,-1.5841,-1.6048,-1.6254,-1.646,-1.6666,-1.6873,-1.7079,-1.7285,-1.7492,-1.7698,-1.7905,-1.8111,-1.8318,-1.8525,-1.8732,-1.8939];
+const MY_L = [3.0227,2.9987,2.9748,2.9508,2.9269,2.9031,2.8792,2.8554,2.8316,2.8078,2.784,2.7603,2.7366,2.7129,2.6892,2.6655,2.6419,2.6183,2.5946,2.571,2.5475,2.5239,2.5003,2.4768,2.4532,2.4297,2.4061,2.3826,2.3591,2.3356,2.3121,2.2885,2.265,2.2415,2.218,2.1944,2.1709,2.1474,2.1238,2.1002,2.0766,2.053,2.0294,2.0058,1.9821,1.9584,1.9347,1.911,1.8872,1.8634,1.8396,1.8157,1.7918,1.7678,1.7438,1.7197,1.6956,1.6714,1.6472,1.6229,1.5985,1.5741,1.5495,1.525,1.5003,1.4755,1.4506,1.4257,1.4006,1.3755,1.3502,1.3248,1.2993,1.2737,1.248,1.2221,1.1961,1.17,1.1437,1.1173,1.0907,1.064,1.0371,1.0101,0.9829,0.9556,0.9281,0.9005,0.8728,0.8449,0.8169,0.7888,0.7606,0.7323,0.7039,0.6755,0.647,0.6186,0.5901,0.5618,0.5335,0.5054,0.4774,0.4497,0.4223,0.3951,0.3684,0.3422,0.3164,0.2912,0.2667,0.2428,0.2197,0.1974,0.176,0.1556,0.1361,0.1177,0.1003,0.084,0.0689,0.055,0.0422,0.0306,0.0203,0.0111,0.0031,-0.0037,-0.0094,-0.0139,-0.0173,-0.0196,-0.0208,-0.0211,-0.0203,-0.0186,-0.016,-0.0125,-0.0082,-0.0032,0.0027,0.0092,0.0165,0.0244,0.0328,0.0419,0.0515,0.0616,0.0722,0.0832,0.0947,0.1066,0.1188,0.1314,0.1443,0.1576,0.1711,0.1849,0.199,0.2133,0.2279,0.2426,0.2576,0.2727,0.288,0.3035,0.3191,0.3349,0.3509,0.3669,0.3831,0.3994,0.4158,0.4322,0.4488,0.4655,0.4823,0.4991,0.516,0.533,0.55,0.5671,0.5843,0.6015,0.6187,0.636,0.6534,0.6708,0.6882,0.7057,0.7232,0.7407,0.7583,0.7759,0.7935,0.8112,0.8289,0.8466,0.8643,0.882,0.8998,0.9175,0.9353,0.9531,0.971,0.9888,1.0067,1.0245,1.0424,1.0603,1.0782];
+const ALT_ARRAS  = [33.37,33.53,33.68,33.84,34.0,34.15,34.31,34.46,34.61,34.77,34.92,35.08,35.23,35.39,35.54,35.69,35.85,36.0,36.15,36.3,36.46,36.61,36.76,36.91,37.07,37.22,37.37,37.52,37.67,37.82,37.97,38.12,38.27,38.42,38.57,38.72,38.87,39.02,39.17,39.32,39.46,39.61,39.76,39.91,40.06,40.2,40.35,40.5,40.64,40.79,40.93,41.08,41.22,41.37,41.51,41.66,41.8,41.94,42.09,42.23,42.37,42.51,42.66,42.8,42.94,43.08,43.22,43.36,43.5,43.64,43.78,43.92,44.06,44.19,44.33,44.47,44.61,44.74,44.88,45.01,45.15,45.28,45.42,45.55,45.69,45.82,45.95,46.08,46.21,46.35,46.48,46.61,46.74,46.87,47.0,47.12,47.25,47.38,47.51,47.63,47.76,47.88,48.01,48.13,48.26,48.38,48.5,48.63,48.75,48.87,48.99,49.11,49.23,49.35,49.47,49.58,49.7,49.82,49.93,50.05,50.16,50.28,50.39,50.5,50.61,50.73,50.84,50.95,51.06,51.16,51.27,51.38,51.49,51.59,51.7,51.8,51.9,52.01,52.11,52.21,52.31,52.41,52.51,52.61,52.71,52.8,52.9,52.99,53.09,53.18,53.27,53.37,53.46,53.55,53.64,53.73,53.81,53.9,53.99,54.07,54.15,54.24,54.32,54.4,54.48,54.56,54.64,54.72,54.79,54.87,54.94,55.02,55.09,55.16,55.23,55.3,55.37,55.44,55.5,55.57,55.63,55.7,55.76,55.82,55.88,55.94,56.0,56.06,56.11,56.17,56.22,56.28,56.33,56.38,56.43,56.48,56.52,56.57,56.61,56.66,56.7,56.74,56.78,56.82,56.86,56.9,56.93,56.97,57.0,57.03,57.07];
+const ALT_LOUXOR = [62.05,62.27,62.49,62.71,62.93,63.15,63.37,63.59,63.81,64.03,64.25,64.47,64.69,64.91,65.13,65.35,65.57,65.79,66.01,66.23,66.44,66.66,66.88,67.1,67.31,67.53,67.75,67.96,68.18,68.39,68.61,68.82,69.04,69.25,69.46,69.68,69.89,70.1,70.32,70.53,70.74,70.95,71.16,71.37,71.58,71.79,72.0,72.2,72.41,72.62,72.82,73.03,73.23,73.44,73.64,73.84,74.04,74.24,74.44,74.64,74.84,75.04,75.23,75.43,75.62,75.82,76.01,76.2,76.39,76.57,76.76,76.95,77.13,77.31,77.49,77.67,77.85,78.02,78.19,78.37,78.53,78.7,78.86,79.03,79.19,79.34,79.5,79.65,79.79,79.94,80.08,80.22,80.35,80.48,80.61,80.73,80.85,80.96,81.07,81.18,81.28,81.37,81.46,81.54,81.62,81.69,81.76,81.82,81.88,81.92,81.97,82.0,82.03,82.05,82.07,82.07,82.08,82.07,82.06,82.04,82.01,81.98,81.94,81.9,81.85,81.79,81.73,81.66,81.58,81.5,81.41,81.32,81.22,81.12,81.01,80.9,80.79,80.66,80.54,80.41,80.28,80.14,80.0,79.86,79.71,79.56,79.41,79.26,79.1,78.94,78.78,78.61,78.44,78.27,78.1,77.93,77.75,77.57,77.39,77.21,77.03,76.84,76.66,76.47,76.28,76.09,75.9,75.71,75.52,75.32,75.13,74.93,74.73,74.53,74.33,74.13,73.93,73.73,73.53,73.32,73.12,72.92,72.71,72.5,72.3,72.09,71.88,71.67,71.46,71.25,71.04,70.83,70.62,70.41,70.2,69.99,69.77,69.56,69.35,69.13,68.92,68.7,68.49,68.27,68.06,67.84,67.63,67.41,67.19,66.97,66.76];
+
+/* Rapport rayon apparent Lune / Soleil au voisinage du maximum */
+const K_A = 1.0739;
+const K_L = 1.0796;
+
+/* Contacts, en minutes depuis 08:00 UTC */
+const A = { name: 'Arras', C1: 3.50, MAX: 62.25, C4: 124.00, k: K_A, isTotal: false, C2: null, C3: null,
+            X: MX_A, Y: MY_A, tz: 2 };
+const L = { name: 'Louxor', C1: 40.30, C2: 122.10, MAX: 125.30, C3: 128.52, C4: 206.58, k: K_L, isTotal: true,
+            X: MX_L, Y: MY_L, tz: 3 };
+
+/* ═══════════════════════════════════════════════════════════════
+   INTERPOLATION DE LA TRAJECTOIRE
+   ═══════════════════════════════════════════════════════════════ */
+function interp(arr, m) {
+  if (m <= 0) return arr[0];
+  if (m >= NMIN) return arr[NMIN];
+  const i = Math.floor(m), f = m - i;
+  return arr[i] + f * (arr[i+1] - arr[i]);
+}
+
+function moonOffset(city, t) {
+  return { ux: interp(city.X, t), uy: interp(city.Y, t) };
+}
+
+/* Aire d'intersection de deux disques (rayons 1 et k, distance d) */
+function overlap(d, k) {
+  if (d >= 1+k) return 0;
+  if (d + k <= 1) return Math.PI*k*k;
+  if (d + 1 <= k) return Math.PI;
+  const cA = Math.max(-1, Math.min(1, (d*d + 1 - k*k)/(2*d)));
+  const cB = Math.max(-1, Math.min(1, (d*d + k*k - 1)/(2*d*k)));
+  const a = Math.acos(cA), b = Math.acos(cB);
+  return a + k*k*b - 0.5*(Math.sin(2*a) + k*k*Math.sin(2*b));
+}
+function obs(d, k) { return overlap(d, k) / Math.PI; }
+
+/* ═══════════════════════════════════════════════════════════════
+   CANVAS
+   ═══════════════════════════════════════════════════════════════ */
+const cA = document.getElementById('canvasArras');
+const cL = document.getElementById('canvasLouxor');
+const ctxA = cA.getContext('2d');
+const ctxL = cL.getContext('2d');
+
+function resize() {
+  const pA = document.getElementById('panelArras');
+  const pL = document.getElementById('panelLouxor');
+  cA.width = pA.clientWidth; cA.height = pA.clientHeight;
+  cL.width = pL.clientWidth; cL.height = pL.clientHeight;
+  render(currentMin);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESSIN
+   ═══════════════════════════════════════════════════════════════ */
+function drawPanel(ctx, city, t, W, H, phaseEl) {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,W,H);
+
+  const sunR = Math.min(W,H) * 0.26;
+  const monR = sunR * city.k;
+  const cx = W/2, cy = H/2;
+
+  const { ux, uy } = moonOffset(city, t);
+  const mx = cx + ux*sunR;
+  const my = cy - uy*sunR;          // y écran vers le bas, y ciel vers le zénith
+
+  const dN = Math.hypot(ux, uy);
+  const inEclipse = t >= city.C1 && t <= city.C4;
+  const curObs = inEclipse ? obs(dN, city.k) : 0;
+  const inTotality = city.isTotal && t >= city.C2 && t <= city.C3;
+
+  if (inTotality) {
+    phaseEl.textContent = 'Totalité';
+  } else if (curObs > 0.005) {
+    phaseEl.textContent = Math.round(curObs*100) + ' %';
+  } else {
+    phaseEl.textContent = '';
+  }
+
+  /* ── Couronne solaire (Louxor, totalité) ── */
+  if (inTotality) {
+    const g = ctx.createRadialGradient(cx,cy, sunR*0.88, cx,cy, sunR*3.2);
+    g.addColorStop(0,    'rgba(255,248,210,0.90)');
+    g.addColorStop(0.08, 'rgba(255,230,165,0.72)');
+    g.addColorStop(0.28, 'rgba(255,200, 90,0.38)');
+    g.addColorStop(0.55, 'rgba(255,160, 50,0.12)');
+    g.addColorStop(1,    'rgba(255,120, 20,0)');
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx,cy,sunR*3.2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    for (let i=0; i<16; i++) {
+      const a  = (i/16)*Math.PI*2 + 0.18;
+      const r1 = sunR*1.04;
+      const r2 = sunR*(1.6+(i%5)*0.28);
+      const gs = ctx.createLinearGradient(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1,
+                                           cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);
+      gs.addColorStop(0,'rgba(255,240,190,0.9)');
+      gs.addColorStop(1,'rgba(255,200,80,0)');
+      ctx.strokeStyle = gs; ctx.lineWidth = sunR*0.05;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+      ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* ── Lueur solaire (hors totalité) ── */
+  if (!inTotality) {
+    const gs = ctx.createRadialGradient(cx,cy,sunR*0.78,cx,cy,sunR*1.65);
+    gs.addColorStop(0,'rgba(253,184,19,0.11)');
+    gs.addColorStop(1,'rgba(253,150,10,0)');
+    ctx.fillStyle = gs;
+    ctx.beginPath(); ctx.arc(cx,cy,sunR*1.65,0,Math.PI*2); ctx.fill();
+  }
+
+  /* ── Disque solaire ── */
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,sunR,0,Math.PI*2);
+  ctx.fillStyle = '#FDB813'; ctx.fill();
+  ctx.restore();
+
+  /* ── Disque lunaire ── */
+  if (dN < 1 + city.k + 0.35) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(mx,my,monR,0,Math.PI*2);
+    ctx.fillStyle = '#06060b'; ctx.fill();
+    ctx.strokeStyle = 'rgba(50,50,70,0.28)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ── Repère du zénith, ancré en haut du panneau ──
+     Il était auparavant positionné à 3,5 rayons solaires au-dessus du
+     centre, ce qui le rejetait hors du canevas dans presque toutes les
+     proportions de fenêtre. Il est maintenant calé sur le haut du
+     panneau, sous les libellés HTML de la ville. */
+  const topY = Math.max(60, H*0.085);
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.24)';
+  ctx.font = '9px Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('ZÉNITH', cx, topY);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(cx, topY+5); ctx.lineTo(cx, topY+15); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  /* ── Silhouette du lieu, sous le mot ZÉNITH ── */
+  /* Pendant la totalité la couronne solaire monte jusqu'à trois rayons
+     solaires et vient mordre le filigrane. On l'efface donc entièrement
+     entre C2 et C3, avec un fondu d'une minute et douze secondes de part
+     et d'autre pour éviter une disparition brutale. */
+  let lmVis = 1;
+  if (city.isTotal) {
+    const FADE = 1.2;                       // minutes
+    if (t >= city.C2 && t <= city.C3)      lmVis = 0;
+    else if (t > city.C2 - FADE && t < city.C2) lmVis = (city.C2 - t) / FADE;
+    else if (t > city.C3 && t < city.C3 + FADE) lmVis = (t - city.C3) / FADE;
+  }
+  drawLandmark(ctx, city, W, cx, topY+20, cy - sunR - 6, 1 - curObs, lmVis);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SILHOUETTES DE LIEU
+   Tracé vectoriel pur, un seul Path2D par monument rempli en une
+   fois pour éviter les surbrillances aux recouvrements, puis
+   quelques ouvertures repeintes en noir pour suggérer le détail.
+
+   La clarté du filigrane suit le flux solaire restant, soit
+   1 moins l'obscuration : à Arras la silhouette s'assombrit à
+   peine, à Louxor elle bascule dans le bleu nuit pendant la
+   totalité puis revient. Réglage dans landmarkStyle.
+   ═══════════════════════════════════════════════════════════════ */
+
+const LM_ALPHA_MIN = 0.10;   // filigrane pendant la totalité
+const LM_ALPHA_MAX = 0.30;   // filigrane en plein Soleil
+
+/* La clarté suit la racine du flux plutôt que le flux lui-même, ce qui
+   se rapproche de la réponse de l'œil : à 46 pour cent d'occultation la
+   silhouette d'Arras ne perd presque rien, alors qu'à Louxor la chute
+   des dernières secondes reste franche. Passer à un profil linéaire
+   suffit à rendre l'effet plus démonstratif mais moins fidèle. */
+function landmarkStyle(flux, vis) {
+  const f = Math.max(0, Math.min(1, flux));
+  const r_ = Math.sqrt(f);
+  const warm = [222, 214, 198], cool = [96, 116, 160];
+  const r = Math.round(warm[0]*r_ + cool[0]*(1-r_));
+  const g = Math.round(warm[1]*r_ + cool[1]*(1-r_));
+  const b = Math.round(warm[2]*r_ + cool[2]*(1-r_));
+  const a = (LM_ALPHA_MIN + (LM_ALPHA_MAX - LM_ALPHA_MIN) * r_) * vis;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a.toFixed(3) + ')';
+}
+
+/* Beffroi d'Arras et façade de l'hôtel de ville
+   Boîte de référence 300 x 240, origine en haut à gauche. Silhouette
+   simplifiée redessinée d'après photographie : lion sommital, flèche,
+   lanternon, couronne octogonale renflée, galerie, étage des baies,
+   étage de l'horloge, fût, toiture à lucarnes et arcade au sol. */
+function pathBeffroi() {
+  const p = new Path2D();
+  p.arc(117, 16, 4.5, 0, Math.PI*2);                                   // lion
+  p.moveTo(117, 20); p.lineTo(123, 34); p.lineTo(111, 34); p.closePath(); // flèche
+  p.rect(111.5, 32, 11, 13);                                           // lanternon
+  p.moveTo(109,45); p.lineTo(125,45); p.lineTo(131,52); p.lineTo(133,61);
+  p.lineTo(128,70); p.lineTo(122,77); p.lineTo(112,77); p.lineTo(106,70);
+  p.lineTo(101,61); p.lineTo(103,52); p.closePath();                   // couronne renflée
+  p.rect(95, 75, 44, 9);                                               // galerie
+  p.rect(101, 82, 32, 32);                                             // étage des baies
+  p.rect(97, 112, 40, 9);                                              // corniche
+  p.rect(100, 119, 34, 32);                                            // étage de l'horloge
+  p.rect(103, 149, 28, 32);                                            // fût
+  for (let i = 0; i < 9; i++) {                                        // lucarnes à épis
+    const x = 44 + i*25;
+    p.rect(x, 144, 9, 14);
+    p.moveTo(x+4.5, 137); p.lineTo(x+9, 144); p.lineTo(x, 144); p.closePath();
+  }
+  p.moveTo(24,178); p.lineTo(276,178); p.lineTo(262,156); p.lineTo(38,156); p.closePath(); // toiture
+  p.rect(30, 178, 240, 62);                                            // façade
+  return p;
+}
+function pathBeffroiVoids() {
+  const p = new Path2D();
+  p.arc(117, 135, 7, 0, Math.PI*2);          // cadran de l'horloge
+  p.rect(105, 90, 7, 20); p.rect(120, 90, 7, 20);   // baies jumelées
+  const xs = [44, 76, 108, 140, 172, 204, 236];
+  for (const x of xs) {
+    p.rect(x, 214, 18, 26);                  // arcade
+    p.rect(x+2, 186, 14, 22);                // fenêtres
+  }
+  return p;
+}
+
+/* Pylône et obélisque de Louxor — boîte de référence 200 x 130 */
+function pathLouxor() {
+  const p = new Path2D();
+  // Obélisque
+  p.moveTo(24, 8); p.lineTo(30.5, 22); p.lineTo(33, 125);
+  p.lineTo(15, 125); p.lineTo(17.5, 22); p.closePath();
+  // Môle gauche, murs extérieurs fruités
+  p.moveTo(50, 125); p.lineTo(60, 40); p.lineTo(94, 40); p.lineTo(94, 125); p.closePath();
+  // Môle droit
+  p.moveTo(196, 125); p.lineTo(186, 40); p.lineTo(152, 40); p.lineTo(152, 125); p.closePath();
+  // Corniches à gorge
+  p.moveTo(58, 40); p.lineTo(96, 40); p.lineTo(98, 31); p.lineTo(56, 31); p.closePath();
+  p.moveTo(188, 40); p.lineTo(150, 40); p.lineTo(148, 31); p.lineTo(190, 31); p.closePath();
+  // Mur de façade entre les deux môles
+  p.rect(94, 58, 58, 67);
+  return p;
+}
+function pathLouxorVoids() {
+  const p = new Path2D();
+  p.rect(108, 74, 30, 51);   // porte centrale
+  p.rect(70, 62, 5, 34);     // rainures à mâts, môle gauche
+  p.rect(80, 62, 5, 34);
+  p.rect(163, 62, 5, 34);    // môle droit
+  p.rect(173, 62, 5, 34);
+  return p;
+}
+
+const LANDMARKS = {
+  Arras:  { path: pathBeffroi(), voids: pathBeffroiVoids(), w: 300, h: 240 },
+  Louxor: { path: pathLouxor(),  voids: pathLouxorVoids(),  w: 200, h: 130 }
+};
+
+function drawLandmark(ctx, city, W, cx, yTop, yLimit, flux, vis) {
+  if (vis <= 0.01) return;                       // totalité : silhouette effacée
+  const lm = LANDMARKS[city.name];
+  if (!lm) return;
+  const hAvail = Math.min(yLimit - yTop, 88);
+  if (hAvail < 26) return;                       // panneau trop bas, on renonce
+  const s = Math.min(hAvail / lm.h, (W*0.5) / lm.w);
+
+  ctx.save();
+  ctx.translate(cx - lm.w*s/2, yTop);
+  ctx.scale(s, s);
+  ctx.fillStyle = landmarkStyle(flux, vis);
+  ctx.fill(lm.path);
+  ctx.fillStyle = '#000';
+  ctx.fill(lm.voids);
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FORMAT HEURE
+   ═══════════════════════════════════════════════════════════════ */
+function fmt(m, tzOffset) {
+  const ts = (8 + tzOffset)*3600 + m*60;
+  const h  = Math.floor(ts/3600) % 24;
+  const mn = Math.floor((ts%3600)/60);
+  return String(h).padStart(2,'0') + ':' + String(mn).padStart(2,'0');
+}
+
+/* Même chose avec les secondes, pour les repères d'événement */
+function fmtS(m, tzOffset) {
+  const ts = Math.round((8 + tzOffset)*3600 + m*60);
+  const h  = Math.floor(ts/3600) % 24;
+  const mn = Math.floor((ts%3600)/60);
+  const sc = ts % 60;
+  return String(h).padStart(2,'0') + ':' + String(mn).padStart(2,'0')
+       + ':' + String(sc).padStart(2,'0');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REPÈRES PERSISTANTS
+   Une fois l'instant franchi, l'heure de l'événement reste affichée
+   pendant tout le reste du déroulé.
+   ═══════════════════════════════════════════════════════════════ */
+const evA = document.getElementById('eventArras');
+const evL = document.getElementById('eventLouxor');
+
+function setEvent(el, html) {
+  if (html) { el.innerHTML = html; el.classList.add('on'); }
+  else { el.innerHTML = ''; el.classList.remove('on'); }
+}
+
+function updateEvents(t) {
+  if (t >= A.MAX) {
+    setEvent(evA, '<span class="tag">Maximum</span> &nbsp;' + fmtS(A.MAX, A.tz) + ' &nbsp;&middot;&nbsp; 46 %');
+  } else {
+    setEvent(evA, '');
+  }
+
+  if (t >= L.C3) {
+    setEvent(evL, '<span class="tag">Totalité</span> &nbsp;' + fmtS(L.C2, L.tz)
+                + ' &rarr; ' + fmtS(L.C3, L.tz));
+  } else if (t >= L.C2) {
+    setEvent(evL, '<span class="tag">Totalité</span> &nbsp;début ' + fmtS(L.C2, L.tz));
+  } else {
+    setEvent(evL, '');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOUCLE
+   ═══════════════════════════════════════════════════════════════ */
+let currentMin = 0;
+
+function render(t) {
+  currentMin = t;
+  drawPanel(ctxA, A, t, cA.width, cA.height, document.getElementById('phaseArras'));
+  drawPanel(ctxL, L, t, cL.width, cL.height, document.getElementById('phaseLouxor'));
+  document.getElementById('timeArras').textContent  = fmt(t, A.tz);
+  document.getElementById('timeLouxor').textContent = fmt(t, L.tz);
+  updateEvents(t);
+}
+
+const slider = document.getElementById('slider');
+slider.addEventListener('input', () => render(parseFloat(slider.value)));
+
+let playing=false, animId=null, lastTs=null;
+const SPEED = 1/0.26; // 1 minute réelle = 0.26 s
+
+function togglePlay() {
+  const btn = document.getElementById('playBtn');
+  if (playing) {
+    playing=false; cancelAnimationFrame(animId);
+    btn.innerHTML='&#9654; Lancer'; lastTs=null; return;
+  }
+  if (currentMin >= NMIN) { currentMin=0; slider.value=0; }
+  playing=true; btn.innerHTML='&#9646;&#9646; Pause';
+  function step(ts) {
+    if (!playing) return;
+    if (lastTs !== null) {
+      const dt = Math.min((ts-lastTs)/1000, 0.08);
+      currentMin = Math.min(currentMin + dt*SPEED, NMIN);
+      slider.value = currentMin;
+      render(currentMin);
+      if (currentMin >= NMIN) {
+        playing=false; btn.innerHTML='&#9654; Lancer'; lastTs=null; return;
+      }
+    }
+    lastTs=ts; animId=requestAnimationFrame(step);
+  }
+  animId=requestAnimationFrame(step);
+}
+
+window.addEventListener('resize', resize);
+resize();
+render(0);
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   HAUTEUR DU SOLEIL SUR L'HORIZON
+   Même axe des temps (minutes depuis 08:00 UTC). Le contraste est
+   l'objet même de la comparaison : à Arras le Soleil est à 43°
+   au maximum, à Louxor il est à 82°, presque au zénith.
+   ═══════════════════════════════════════════════════════════════ */
+const COL_A = '#ffc830';
+const COL_L = '#6cc5ff';
+
+const altCanvas = document.getElementById('altCanvas');
+const altCtx = altCanvas.getContext('2d');
+
+function altAt(arr, m) {
+  if (m <= 0) return arr[0];
+  if (m >= NMIN) return arr[NMIN];
+  const i = Math.floor(m), f = m - i;
+  return arr[i] + f * (arr[i+1] - arr[i]);
+}
+
+function sizeAlt() {
+  altCanvas.width = document.getElementById('altWrap').clientWidth;
+  altCanvas.height = 118;
+}
+
+function fmtUTC(m) {
+  const ts = 8*3600 + m*60;
+  const h = Math.floor(ts/3600) % 24;
+  const mn = Math.floor((ts%3600)/60);
+  return String(h).padStart(2,'0') + ':' + String(mn).padStart(2,'0');
+}
+
+function drawAltitude(t) {
+  const X = altCtx, W = altCanvas.width, H = altCanvas.height;
+  if (!W) return;
+  X.clearRect(0,0,W,H);
+
+  const ml = 10, mr = 10, mtop = 24, mbot = 16;
+  const pw = W - ml - mr, ph = H - mtop - mbot;
+  const aMin = 0, aMax = 90;
+  const px = m => ml + (m/NMIN) * pw;
+  const py = a => mtop + (aMax - a) / (aMax - aMin) * ph;
+
+  X.strokeStyle = 'rgba(255,255,255,0.06)'; X.lineWidth = 1;
+  X.fillStyle = '#666';
+  X.font = '9px Helvetica, Arial, sans-serif';
+  X.textBaseline = 'middle'; X.textAlign = 'left';
+  [30,60].forEach(a => {
+    const y = py(a);
+    X.beginPath(); X.moveTo(ml, y); X.lineTo(ml + pw, y); X.stroke();
+    X.fillText(a + '°', ml + 3, y - 6);
+  });
+
+  // Zénith
+  X.strokeStyle = 'rgba(120,180,255,0.30)'; X.setLineDash([4,4]);
+  X.beginPath(); X.moveTo(ml, py(90)); X.lineTo(ml + pw, py(90)); X.stroke();
+  X.setLineDash([]);
+  X.fillStyle = 'rgba(140,190,255,0.7)'; X.textBaseline = 'top';
+  X.fillText('Zénith 90°', ml + 3, py(90) + 2);
+
+  X.textBaseline = 'top'; X.fillStyle = '#5c5c5c';
+  [0,30,60,90,120,150,180,210].forEach(m => {
+    const x = px(m);
+    X.strokeStyle = 'rgba(255,255,255,0.05)';
+    X.beginPath(); X.moveTo(x, mtop); X.lineTo(x, mtop + ph); X.stroke();
+    X.textAlign = m === 0 ? 'left' : (m === 210 ? 'right' : 'center');
+    X.fillText(fmtUTC(m), x, mtop + ph + 4);
+  });
+
+  function curve(arr, color) {
+    X.strokeStyle = color; X.lineWidth = 2; X.beginPath();
+    for (let m = 0; m <= NMIN; m++) {
+      const x = px(m), y = py(altAt(arr, m));
+      m === 0 ? X.moveTo(x, y) : X.lineTo(x, y);
+    }
+    X.stroke();
+  }
+  curve(ALT_LOUXOR, COL_L);
+  curve(ALT_ARRAS, COL_A);
+
+  // Maximum de chaque ville
+  function maxDot(m, arr, color) {
+    const x = px(m), y = py(altAt(arr, m));
+    X.fillStyle = '#0c0c0c'; X.beginPath(); X.arc(x, y, 4, 0, 7); X.fill();
+    X.strokeStyle = color; X.lineWidth = 1.6; X.beginPath(); X.arc(x, y, 4, 0, 7); X.stroke();
+  }
+  maxDot(125.30, ALT_LOUXOR, COL_L);
+  maxDot(62.25, ALT_ARRAS, COL_A);
+
+  const tc = Math.max(0, Math.min(t, NMIN));
+  const xm = px(tc);
+  X.strokeStyle = 'rgba(255,255,255,0.45)'; X.lineWidth = 1;
+  X.beginPath(); X.moveTo(xm, mtop - 3); X.lineTo(xm, mtop + ph); X.stroke();
+  const aA = altAt(ALT_ARRAS, tc), aL = altAt(ALT_LOUXOR, tc);
+  X.fillStyle = COL_L; X.beginPath(); X.arc(xm, py(aL), 3.3, 0, 7); X.fill();
+  X.fillStyle = COL_A; X.beginPath(); X.arc(xm, py(aA), 3.3, 0, 7); X.fill();
+
+  X.textBaseline = 'alphabetic';
+  X.textAlign = 'left'; X.fillStyle = '#888';
+  X.font = '600 10px Helvetica, Arial, sans-serif';
+  X.fillText("HAUTEUR DU SOLEIL SUR L'HORIZON", ml, 14);
+
+  X.textAlign = 'right';
+  X.font = '600 11px Helvetica, Arial, sans-serif';
+  const lTxt = 'Louxor ' + aL.toFixed(1) + '°';
+  X.fillStyle = COL_L; X.fillText(lTxt, W - mr, 14);
+  const lw = X.measureText(lTxt).width;
+  X.fillStyle = COL_A; X.fillText('Arras ' + aA.toFixed(1) + '°', W - mr - lw - 16, 14);
+  X.textAlign = 'left';
+}
+
+let _lastAltMin = NaN;
+function altLoop() {
+  if (currentMin !== _lastAltMin) {
+    drawAltitude(currentMin);
+    _lastAltMin = currentMin;
+  }
+  requestAnimationFrame(altLoop);
+}
+
+window.addEventListener('resize', () => { sizeAlt(); drawAltitude(currentMin); });
+sizeAlt();
+drawAltitude(0);
+requestAnimationFrame(altLoop);
+</script>
+</body>
+</html>
