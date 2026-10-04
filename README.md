@@ -10,7 +10,7 @@ Astropliquette rassemble des appliquettes interactives de vulgarisation en astro
 
 **[Éclipse du 12 août 2026](eclipse2026/)** anime la hauteur du Soleil pendant l'éclipse du 12 août 2026, en parallèle à Arras, où le Soleil sera éclipsé à 91 %, et à Oviedo, où l'éclipse sera totale.
 
-**[Éclipse du 2 août 2027](eclipse2027/)** compare l'éclipse partielle vue d'Arras, à 46 %, et la totalité vue de Louxor, avec des positions calculées à partir de l'éphéméride JPL DE440.
+**[Éclipse du 2 août 2027](eclipse2027/)** compare l'éclipse partielle vue d'Arras, à 46 %, et la totalité vue de Louxor.
 
 ## Consulter en ligne
 
@@ -19,7 +19,5 @@ La galerie est publiée avec GitHub Pages à l'adresse [williamdrap.github.io/as
 ## Crédits
 
 Réalisation : William Drapeaud/GSA.
-
-La carte de la Lune provient du CGI Moon Kit du Scientific Visualization Studio de la NASA (Goddard Space Flight Center), construit à partir des données de la sonde Lunar Reconnaissance Orbiter. Ces images sont dans le domaine public.
 
 Le rendu 3D utilise la bibliothèque [Three.js](https://threejs.org).
