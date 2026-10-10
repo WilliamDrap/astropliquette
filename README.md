@@ -14,6 +14,8 @@ Astropliquette rassemble des appliquettes interactives de vulgarisation en astro
 
 **[Le menu cosmique](menu-cosmique/)** est une borne conçue pour la Fête de la science 2026, à utiliser sur une tablette à l'horizontale. On choisit un aliment et la borne range la masse de ses atomes selon l'astre qui les a fabriqués, du Big Bang aux étoiles.
 
+**[Les étoiles et la pollution lumineuse](pollution-lumineuse/)** montre le ciel d'Arras à 22 h depuis six lieux réels, du Causse Méjean dans les Cévennes jusqu'à Paris, en passant par la Grand-Place d'Arras. Le nombre d'étoiles visibles se calcule à partir de la luminance du ciel donnée par l'atlas mondial de la pollution lumineuse (Falchi et al., 2016) et des 9 096 étoiles du Bright Star Catalogue. En ville, l'éblouissement par les éclairages proches est ajouté selon une hypothèse non mesurée ; c'est une simulation pédagogique fondée sur des données scientifiques.
+
 ## Consulter en ligne
 
 La galerie est publiée avec GitHub Pages à l'adresse [williamdrap.github.io/astropliquette](https://williamdrap.github.io/astropliquette/). Chaque appliquette se trouve dans son propre dossier.
