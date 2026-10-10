@@ -105,6 +105,10 @@ const airmass = sa => 1 / (sa + 0.025 * Math.exp(-11 * sa));
 const K_EXT = 0.25;
 // Éclaircissement du ciel vers l'horizon (dôme lumineux), croissant avec la pollution
 const domeAmp = s => 0.35 + 1.5 * Math.min(1, Math.max(0, (22 - s) / 5));
+// Classe de Bortle d'après la légende SQM de lightpollutionmap.info (atlas Falchi 2016) ;
+// concorde avec les classes relevées dans l'atlas pour les onze points vérifiés.
+const bortle = s => s > 21.99 ? '1' : s > 21.89 ? '2' : s > 21.69 ? '3' : s > 20.49 ? '4' :
+  s > 19.50 ? '5' : s > 18.94 ? '6' : s > 18.38 ? '7' : '8-9';
 const sqmToCd = s => 1.08e5 * Math.pow(10, -0.4 * s);
 const cdToSqm = L => -2.5 * Math.log10(L / 1.08e5);
 // Éblouissement par les éclairages proches (formule de Stiles-Holladay, CIE) :
@@ -310,7 +314,7 @@ function render() {
   // Valeurs de l'atlas : 2 décimales sur un repère, 1 entre deux ; Bortle seulement sur les repères
   document.getElementById('read').textContent = here
     ? here.sqm.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' mag/arcsec² · Bortle ' + here.bortle
-    : sSky.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mag/arcsec²';
+    : sSky.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mag/arcsec² · Bortle ' + bortle(sSky);
   document.getElementById('n').textContent = count.toLocaleString('fr-FR');
   marks.forEach(m => m.el.classList.toggle('on', m === here));
   document.getElementById('tag').textContent = (here ? here.name : 'Ciel d\'Arras') + ' · ' + dateTxt;
